@@ -9,18 +9,10 @@ from datetime import date
 from datetime import timedelta
 import request
 
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.support.select import Select
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 import os
 import time
 
-from io import BytesIO
-from PIL import Image
 
 import firebase_admin
 from firebase_admin import credentials
@@ -39,83 +31,168 @@ firebase_admin.initialize_app(cred,{
     'storageBucket': 'https://wesender2019.appspot.com'
 })
 
-apiKey = "6bef18936ac12a9096e9fe7a8fe1f878"
-
 database = db.reference()
 bucket = storage.bucket("wesender2019.appspot.com")
+multiID=[]
+multiAPI=[]
 
-GOOGLE_CHROME_PATH = '/app/.apt/usr/bin/google_chrome'
-CHROMEDRIVER_PATH = '/app/.chromedriver/bin/chromedriver'
+def divProcess(reportId):
+    #check jika report id ada di dalam list
+    if reportId in multiID:
+        #menjalankan API
+        index = multiID.index(reportId)
+        service = multiAPI[index]
+        return str(service)
+    else:
+        #menambah proses ke multi
+        if len(multiID)<5:
+            multiID.append(reportId)
+            multiAPI.append(len(multiID))
+
+            service=str(len(multiID))
+            return str(service)
+        else:
+            #mengganti prioritas
+            multiID.pop(0)
+            multiAPI.append(multiAPI[0])
+            multiAPI.pop(0)
+            multiID.append(reportId)
+            return str(multiAPI[len(multiAPI)-1])
 
 # Flask app should start in global layout
 app = Flask(__name__)
 
 @app.route('/get_barcode', methods=['POST'])
-
-#user request
-#{
-#	"key":"6bef18936ac12a9096e9fe7a8fe1f878",
-#	"reportId":"test",
-#	"email":"snorlak1999@gmail.com"
-#}
-
 def get_barcode():
     try:
-        codeData = str(request.json["reportId"])+""
+        userKey = str(request.headers["apikey"])+""
+    except Exception as error:
+        return "Error 404 Key Not Found"
+
+    try:
+        reportId = str(request.json["reportId"])+""
+    except Exception as error:
+        return "Error 404 reportId Not Found"
+
+    #check firebase api key
+    fireKey = database.child("userAPI").get()
+    if userKey in fireKey:
+        service = divProcess(reportId)
+        URL = "https://api-gomamedia-wasender-s"+service+".herokuapp.com/"
+        key = {
+            "reportId":reportId
+        }
+        apikey = {
+            "apikey" : userKey
+        }
+        return requests.post(headers=apikey ,url=URL+"get_barcode", data=key).text
+    else:
+        return "Error 401 Wrong Key"
+
+@app.route('/send_message', methods=['POST'])
+def send_message():  
+    try:
+        userKey = str(request.headers["apikey"])+""
+    except Exception as error:
+        return "Error 404 Key Not Found"
+
+    try:
+        reportId = str(request.json["reportId"])+""
+    except Exception as error:
+        return "Error 404 reportId Not Found"
+
+    try:
+        number = str(request.json["number"])+""
+    except Exception as error:
+        return "Error 404 number Not Found"
+
+    try:
+        message = str(request.json["message"])+""
+    except Exception as error:
+        return "Error 404 message Not Found"
+
+    #check firebase api key
+    fireKey = database.child("userAPI").get()
+    if userKey in fireKey:
+        service = divProcess(reportId)
+        URL = "https://api-gomamedia-wasender-s"+service+".herokuapp.com/"
+        keySend = {
+                "reportId":reportId,
+                "number":number,
+                "message":message,
+        }
+        apikey = {
+            "apikey" : userKey
+        }
+        
+        #mengurangi limit
+        limit = database.child("userAPI/"+userKey+"/limit").get() - 1
+        database.child("userAPI/"+userKey).update({
+            "limit":limit
+        })
+        return requests.post(headers=apikey ,url = URL+"send_message", data=keySend).text
+    else:
+        return "Error 401 Wrong Key"
+
+@app.route('/send_report', methods=['POST'])
+def send_report():
+    try:
+        userKey = str(request.headers["apikey"])+""
+    except Exception as error:
+        return "Error 404 Key Not Found"
+
+    try:
+        reportId = str(request.json["reportId"])+""
     except Exception as error:
         return "Error 404 reportId Not Found"
 
     try:
         email = str(request.json["email"])+""
     except Exception as error:
-        return "Error 404 Email Not Found"
+        return "Error 404 email Not Found"
+
+    #check firebase api key
+    fireKey = database.child("userAPI").get()
+    if userKey in fireKey:
+        service = divProcess(reportId)
+        URL = "https://api-gomamedia-wasender-s"+service+".herokuapp.com/"
+        keyReport = {
+                "reportId":reportId,
+                "email":email
+        }
+        apikey = {
+            "apikey" : userKey
+        }
+        return requests.post(headers=apikey ,url = URL+"send_report", data  = keyReport).text
+    else:
+        return "Error 401 Wrong Key"
+
+@app.route('/close', methods=['POST'])
+def close():
+    try:
+        userKey = str(request.headers["apikey"])+""
+    except Exception as error:
+        return "Error 404 Key Not Found"
 
     try:
-        userKey = str(request.json["key"])+""
+        reportId = str(request.json["reportId"])+""
     except Exception as error:
         return "Error 404 reportId Not Found"
-    #validasi key
-    if (userKey==apiKey):
-        try:
-            chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument('--disable-gpu')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3641.0 Safari/537.36')
-            chrome_options.binary_location = GOOGLE_CHROME_PATH
-            
-            # Driver to open a browser
-            driver = webdriver.Chrome(execution_path=CHROMEDRIVER_PATH, chrome_options=chrome_options)
 
-            #link to open a site
-            driver.get("https://web.whatsapp.com/")
-            time.sleep(1)
-            png = driver.save_screenshot(codeData+".png")
-            
-            
-            im = Image.open(codeData+".png")
-            im = im.crop((430, 130, 720, 430))
-            im.save(codeData+".png")
-
-            today = date.today()
-            today = str(today.strftime("%d/%m/%Y"))
-            #push to firebase
-            database.child("API/"+userKey+"/"+codeData).update({
-                "date" : today,
-                "email" : email
-            })
-            # push image to firebase
-            blob = bucket.blob("API/"+userKey+"/"+codeData+".png")
-            blob.upload_from_filename(codeData+".png")
-            urlImg = "https://firebasestorage.googleapis.com/v0/b/wesender2019.appspot.com/o/API%2F"+userKey+"%2F"+codeData+".png?alt=media"
-            os.remove(codeData+".png")
-            return urlImg
-        except Exception as error:
-            return str(error)
+    #check firebase api key
+    fireKey = database.child("userAPI").get()
+    if userKey in fireKey:
+        service = divProcess(reportId)
+        URL = "https://api-gomamedia-wasender-s"+service+".herokuapp.com/"
+        keyClose = {
+            "reportId":reportId
+        }
+        apikey = {
+            "apikey" : userKey
+        }
+        return requests.post(headers=apikey ,url = URL+"close", data  = keyClose).text
     else:
-        return "Error 401 Key Error"
-    
-
+        return "Error 401 Wrong Key"
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 8080))
