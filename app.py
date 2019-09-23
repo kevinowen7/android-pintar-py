@@ -34,7 +34,6 @@ def start():
     
     response = requests.get(link)
     try:
-        pytesseract.pytesseract.tesseract_cmd = '/app/.apt/usr/bin/tesseract'
         text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))
     except Exception as error:
         return str(error)
