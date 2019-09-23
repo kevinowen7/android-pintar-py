@@ -18,7 +18,10 @@ from flask import Flask
 from flask import request
 from flask import make_response
 
+from io import BytesIO
+import pytesseract
 import base64
+from PIL import Image
 
 # Flask app should start in global layout
 app = Flask(__name__)
@@ -29,7 +32,13 @@ def start():
         link = str(request.json["link"])+""
     except Exception as error:
         return "Error 404 link Not Found"
-    return link
+    
+    response = requests.get(link)
+    try:
+        text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))
+    except Exception as error:
+        return str(error)
+    return text
     
     
 
