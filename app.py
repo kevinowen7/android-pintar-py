@@ -19,9 +19,7 @@ from flask import request
 from flask import make_response
 
 from io import BytesIO
-import pytesseract
 import base64
-from PIL import Image
 
 # Flask app should start in global layout
 app = Flask(__name__)
