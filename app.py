@@ -32,7 +32,7 @@ def start():
     except Exception as error:
         return "Error 404 link Not Found"
     
-    response = requests.get(url)
+    response = requests.get(link)
     try:
         text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))
     except Exception as error:
