@@ -35,10 +35,10 @@ def start():
     
     response = requests.get(link)
     try:
-        text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))
+        b64string = base64.b64encode(response.content)
     except Exception as error:
         return str(error)
-    return text
+    return b64string
     
     
 
