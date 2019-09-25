@@ -33,16 +33,9 @@ def start():
         return "Error 404 link Not Found"
     
     response = requests.get(link, stream=True)
-    byteImgIO = BytesIO()
-    byteImg = Image.open(response.content)
-    byteImg.save(byteImgIO, "PNG")
-    byteImgIO.seek(0)
-    byteImg = byteImgIO.read()
-    dataBytesIO = BytesIO(byteImg)
     
     try:
-        """text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))"""
-        text = pytesseract.image_to_string(Image.open(dataBytesIO))
+        text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))
     except Exception as error:
         return str(error)
     return text
