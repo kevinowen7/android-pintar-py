@@ -34,7 +34,7 @@ def start():
     
     response = requests.get(link)
     try:
-        text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))
+        text = pytesseract.image_to_string(Image.open(response.content))
     except Exception as error:
         return str(error)
     return text
