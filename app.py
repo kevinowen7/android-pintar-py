@@ -32,7 +32,7 @@ def start():
     except Exception as error:
         return "Error 404 link Not Found"
     
-    response = requests.get(link)
+    response = requests.get(link, stream=True)
     try:
         pytesseract.pytesseract.tesseract_cmd = '/app/.apt/usr/bin/tesseract'
         text = pytesseract.image_to_string(Image.open(BytesIO(response.content)))
